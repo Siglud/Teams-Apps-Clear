@@ -21,14 +21,10 @@
         clearAll();
     };
 
-    const init = setInterval(() => {
-        if (!document.querySelector('main')) {
-            console.log('Still waiting for page init');
-        } else {
-            clearInterval(init);
-            document.querySelector('main').appendChild(button);
-        }
-    }, 1000);
+    retryUntilElementReady(() => document.querySelector('main'), (contentArea) => {
+        contentArea.appendChild(button);
+        console.log('Button added');
+    }, 'still waiting for main content area');
 
     function clearAll() {
         const delBtn = document.querySelector(".ui-table__cell button");
@@ -38,31 +34,35 @@
         }
 
         delBtn.click();
-        const clickDot = setInterval(() => {
-            const panel = document.querySelector(".ui-popup__content li:nth-child(3) a");
-            if (panel) {
-                clearInterval(clickDot);
-                panel.click();                
-                const clickDelete = setInterval(() => {
-                    const verifyColumn = document.querySelector(".ui-box>div[role='dialog'] span");
-                    const input = document.querySelector(".ui-box>div[role='dialog'] section input");
-                    if (input && verifyColumn) {
-                        clearInterval(clickDelete);
-                        input.value = verifyColumn.innerText;
-                        input._valueTracker.setValue('');
-                        input.dispatchEvent(event);
-                        const deleteButton = document.querySelector('.ui-dialog__footer button:nth-child(2)');
+        retryUntilElementReady(() => document.querySelector(".ui-popup__content li:nth-child(3) a"), (panel) => {
+            panel.click();
+            retryUntilElementReady(() => document.querySelector(".ui-box>div[role='dialog'] span"), (verifyColumn) => {
+                retryUntilElementReady(() => document.querySelector(".ui-box>div[role='dialog'] section input"), (input) => {
+                    input.value = verifyColumn.innerText;
+                    input._valueTracker.setValue('');
+                    input.dispatchEvent(event);
+                    retryUntilElementReady(() => document.querySelector('.ui-dialog__footer button:nth-child(2)'), (deleteButton) => {
                         deleteButton.click();
-                        const clickDone = setInterval(() => {
-                            const doneBtn = document.querySelector('div[role="alert"] button');
-                            if (doneBtn) {
-                                clearInterval(clickDone);
-                                doneBtn.click();
-                                clearAll();
-                            }
-                        }, 1000);
-                    }
-                }, 1000);
+                        retryUntilElementReady(() => document.querySelector('div[role="alert"] button'), (doneBtn) => {
+                            doneBtn.click();
+                            clearAll();
+                        }, 'still waiting for done button');
+                    }, 'still waiting for delete button');
+                }, 'still waiting for verify column');
+            }, 'still waiting for verify column');
+        }, 'still waiting for delete button');
+    }
+
+    function retryUntilElementReady(selector, callback, errorLog) {
+        const interval = setInterval(() => {
+            const element = selector();
+            if (element) {
+                clearInterval(interval);
+                callback(element);
+            } else {
+                if (errorLog) {
+                    console.log(errorLog)
+                }
             }
         }, 1000);
     }
